@@ -603,35 +603,50 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Install Dependencies
+    - name: Install Build Tools
       run: |
-        brew update
-        brew install --build-from-source cmake \
-          dylibbundler \
-          jpeg-turbo \
-          libopenmpt \
-          libpng \
-          ninja \
-          sdl3 \
-          sdl3_mixer
+        brew install cmake ninja dylibbundler
+
+    - name: Build Game Libraries for macOS 12.0
+      run: |
+        mkdir -p deps_src deps_install
+        cd deps_src
+
+        curl -L https://github.com | tar xz
+        cmake -G Ninja -S SDL3-3.2.8 -B build-sdl3 -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 -DCMAKE_INSTALL_PREFIX=$PWD/../deps_install
+        cmake --build build-sdl3 && cmake --install build-sdl3
+
+        curl -L https://github.com | tar xz
+        cmake -G Ninja -S SDL_mixer-main -B build-mixer -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 -DCMAKE_PREFIX_PATH=$PWD/../deps_install -DCMAKE_INSTALL_PREFIX=$PWD/../deps_install -DSDLMIXER_VENDORED=ON
+        cmake --build build-mixer && cmake --install build-mixer
+
+        curl -L https://sourceforge.net | tar xz
+        cmake -G Ninja -S libpng-1.6.47 -B build-png -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 -DCMAKE_INSTALL_PREFIX=$PWD/../deps_install -DPNG_TESTS=OFF
+        cmake --build build-png && cmake --install build-png
+
+        curl -L https://github.com | tar xz
+        cmake -G Ninja -S libjpeg-turbo-3.1.0 -B build-jpeg -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 -DCMAKE_INSTALL_PREFIX=$PWD/../deps_install
+        cmake --build build-jpeg && cmake --install build-jpeg
+
+        curl -L https://openmpt.org | tar xz
+        cd libopenmpt-0.7.13+release.autotools
+        ./configure --prefix=$PWD/../../deps_install --disable-openmpt123 --disable-examples --disable-tests --without-mpg123 --without-ogg --without-vorbis --without-vorbisfile --without-portaudio --without-portaudiocpp --without-sndfile --without-flac CFLAGS="-mmacosx-version-min=12.0" CXXFLAGS="-mmacosx-version-min=12.0" LDFLAGS="-mmacosx-version-min=12.0"
+        make -j$(sysctl -n hw.ncpu) && make install
 
     - name: Build PvZ-Portable
       run: |
-        mkdir build
         cmake -G Ninja -B build \
           -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
-          -DCMAKE_OSX_ARCHITECTURES=x86_64
+          -DCMAKE_OSX_ARCHITECTURES=x86_64 \
+          -DCMAKE_PREFIX_PATH=$PWD/deps_install
         cmake --build build
 
-        mkdir -p dist
-        mkdir -p dist/libs
+        mkdir -p dist dist/libs
         cp build/pvz-portable dist/
         strip -x dist/pvz-portable
 
-        echo "Bundling dependencies..."
-        dylibbundler -of -b -x dist/pvz-portable -d dist/libs -p @executable_path/libs/
-
+        dylibbundler -of -b -x dist/pvz-portable -d dist/libs -p @executable_path/libs/ -s $PWD/deps_install/lib
         codesign --force --deep -s - dist/pvz-portable
         codesign --force --deep -s - dist/libs/*
 
@@ -640,7 +655,6 @@ jobs:
       with:
         name: pvz-portable-macos-intel-monterey
         path: dist/
-
 
   build-android:
     name: Build for Android (arm64-v8a)
