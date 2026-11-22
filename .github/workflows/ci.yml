@@ -594,8 +594,10 @@ jobs:
   #           build/pvz-portable.elf
 
   build-macos:
-    name: Build for macOS (aarch64)
-    runs-on: macos-latest
+    name: Build for macOS (x86_64 Monterey)
+    runs-on: macos-15-intel
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "12.0"
     steps:
     - uses: actions/checkout@v6
       with:
@@ -604,7 +606,7 @@ jobs:
     - name: Install Dependencies
       run: |
         brew update
-        brew install cmake \
+        brew install --build-from-source cmake \
           dylibbundler \
           jpeg-turbo \
           libopenmpt \
@@ -616,7 +618,10 @@ jobs:
     - name: Build PvZ-Portable
       run: |
         mkdir build
-        cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=Release
+        cmake -G Ninja -B build \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
+          -DCMAKE_OSX_ARCHITECTURES=x86_64
         cmake --build build
 
         mkdir -p dist
@@ -628,12 +633,14 @@ jobs:
         dylibbundler -of -b -x dist/pvz-portable -d dist/libs -p @executable_path/libs/
 
         codesign --force --deep -s - dist/pvz-portable
+        codesign --force --deep -s - dist/libs/*
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v7
       with:
-        name: pvz-portable-macos
+        name: pvz-portable-macos-intel-monterey
         path: dist/
+
 
   build-android:
     name: Build for Android (arm64-v8a)
