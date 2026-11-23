@@ -11,40 +11,69 @@ jobs:
     env:
       MACOSX_DEPLOYMENT_TARGET: "12.0"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Install Build Tools
-        run: brew install cmake ninja dylibbundler autoconf automake libtool pkg-config
+        run: |
+          brew install cmake ninja dylibbundler \
+            autoconf automake libtool pkg-config
 
-      - name: Build Game Libraries for macOS 12.0
+      - name: Build Game Libraries
         run: |
           set -e
           mkdir -p deps_src deps_install
           INSTALL_DIR="$PWD/deps_install"
+          GH="https://github.com"
           cd deps_src
 
-          git clone --depth 1 https://github.com
-          cmake -G Ninja -S SDL -B build-sdl3 -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 -DCMAKE_OSX_ARCHITECTURES=x86_64 -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR"
+          git clone --depth 1 "$GH/libsdl-org/SDL.git"
+          cmake -G Ninja -S SDL -B build-sdl3 \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
+            -DCMAKE_OSX_ARCHITECTURES=x86_64 \
+            -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR"
           cmake --build build-sdl3 && cmake --install build-sdl3
 
-          git clone --depth 1 https://github.com
-          cmake -G Ninja -S SDL_mixer -B build-mixer -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 -DCMAKE_OSX_ARCHITECTURES=x86_64 -DCMAKE_PREFIX_PATH="$INSTALL_DIR" -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" -DSDLMIXER_VENDORED=ON
+          git clone --depth 1 "$GH/libsdl-org/SDL_mixer.git"
+          cmake -G Ninja -S SDL_mixer -B build-mixer \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
+            -DCMAKE_OSX_ARCHITECTURES=x86_64 \
+            -DCMAKE_PREFIX_PATH="$INSTALL_DIR" \
+            -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
+            -DSDLMIXER_VENDORED=ON
           cmake --build build-mixer && cmake --install build-mixer
 
-          git clone --depth 1 https://github.com
-          cmake -G Ninja -S libpng -B build-png -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 -DCMAKE_OSX_ARCHITECTURES=x86_64 -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" -DPNG_TESTS=OFF
+          git clone --depth 1 "$GH/pnggroup/libpng.git"
+          cmake -G Ninja -S libpng -B build-png \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
+            -DCMAKE_OSX_ARCHITECTURES=x86_64 \
+            -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
+            -DPNG_TESTS=OFF
           cmake --build build-png && cmake --install build-png
 
-          git clone --depth 1 https://github.com
-          cmake -G Ninja -S libjpeg-turbo -B build-jpeg -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 -DCMAKE_OSX_ARCHITECTURES=x86_64 -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR"
+          git clone --depth 1 "$GH/libjpeg-turbo/libjpeg-turbo.git"
+          cmake -G Ninja -S libjpeg-turbo -B build-jpeg \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
+            -DCMAKE_OSX_ARCHITECTURES=x86_64 \
+            -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR"
           cmake --build build-jpeg && cmake --install build-jpeg
 
-          git clone --depth 1 https://github.com
+          git clone --depth 1 "$GH/OpenMPT/openmpt.git"
           cd openmpt
           autoreconf -fi
-          ./configure --prefix="$INSTALL_DIR" --disable-openmpt123 --disable-examples --disable-tests --without-mpg123 --without-ogg --without-vorbis --without-vorbisfile --without-portaudio --without-portaudiocpp --without-sndfile --without-flac CFLAGS="-mmacosx-version-min=12.0 -arch x86_64" CXXFLAGS="-mmacosx-version-min=12.0 -arch x86_64" LDFLAGS="-mmacosx-version-min=12.0 -arch x86_64"
+          ./configure --prefix="$INSTALL_DIR" \
+            --disable-openmpt123 --disable-examples --disable-tests \
+            --without-mpg123 --without-ogg --without-vorbis \
+            --without-vorbisfile --without-portaudio \
+            --without-portaudiocpp --without-sndfile --without-flac \
+            CFLAGS="-mmacosx-version-min=12.0 -arch x86_64" \
+            CXXFLAGS="-mmacosx-version-min=12.0 -arch x86_64" \
+            LDFLAGS="-mmacosx-version-min=12.0 -arch x86_64"
           make -j$(sysctl -n hw.ncpu) && make install
 
       - name: Build PvZ-Portable
@@ -61,12 +90,15 @@ jobs:
           cp build/pvz-portable dist/
           strip -x dist/pvz-portable
 
-          dylibbundler -of -b -x dist/pvz-portable -d dist/libs -p @executable_path/libs/ -s "$PWD/deps_install/lib"
+          dylibbundler -of -b -x dist/pvz-portable \
+            -d dist/libs -p @executable_path/libs/ \
+            -s "$PWD/deps_install/lib"
           codesign --force --deep -s - dist/pvz-portable
           codesign --force --deep -s - dist/libs/*
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pvz-portable-macos-intel-monterey
           path: dist/
+
