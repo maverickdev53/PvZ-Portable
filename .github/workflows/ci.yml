@@ -63,9 +63,9 @@ jobs:
             -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR"
           cmake --build build-jpeg && cmake --install build-jpeg
 
-          curl -fL "$GH/OpenMPT/openmpt/releases/download/libopenmpt-0.7.13/libopenmpt-0.7.13%2Brelease.autotools.tar.gz" -o openmpt.tar.gz
+          curl -fL "https://lib.openmpt.org/files/libopenmpt/src/libopenmpt-0.8.7+release.autotools.tar.gz" -o openmpt.tar.gz
           tar xzf openmpt.tar.gz
-          cd libopenmpt-0.7.13+release.autotools
+          cd libopenmpt-0.8.7+release.autotools
           ./configure --prefix="$INSTALL_DIR" \
             --disable-openmpt123 --disable-examples --disable-tests \
             --without-mpg123 --without-ogg --without-vorbis \
