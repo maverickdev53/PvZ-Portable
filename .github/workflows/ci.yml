@@ -1,3 +1,4 @@
+cat << 'EOF' > .github/workflows/macos.yml
 name: Build macOS Intel Monterey
 
 on:
@@ -70,3 +71,5 @@ jobs:
         with:
           name: pvz-portable-macos-intel-monterey
           path: dist/
+EOF
+git add .github/workflows/macos.yml && git commit -m "Fix clone URLs" && git push origin main
