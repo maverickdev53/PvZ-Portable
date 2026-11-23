@@ -17,7 +17,7 @@ jobs:
 
       - name: Install Build Tools
         run: |
-          brew install cmake ninja dylibbundler
+          brew install cmake ninja dylibbundler llvm
 
       - name: Build Game Libraries
         run: |
@@ -63,7 +63,7 @@ jobs:
             -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR"
           cmake --build build-jpeg && cmake --install build-jpeg
 
-          curl -fL "https://lib.openmpt.org/files/libopenmpt/src/libopenmpt-0.8.7+release.autotools.tar.gz" -o openmpt.tar.gz
+          curl -fL "https://openmpt.org" -o openmpt.tar.gz
           tar xzf openmpt.tar.gz
           cd libopenmpt-0.8.7+release.autotools
           ./configure --prefix="$INSTALL_DIR" \
@@ -79,11 +79,14 @@ jobs:
       - name: Build PvZ-Portable
         run: |
           set -e
+          LLVM_PREFIX="$(brew --prefix llvm)"
           cmake -G Ninja -B build \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
             -DCMAKE_OSX_ARCHITECTURES=x86_64 \
-            -DCMAKE_PREFIX_PATH="$PWD/deps_install"
+            -DCMAKE_PREFIX_PATH="$PWD/deps_install" \
+            -DCMAKE_CXX_FLAGS="-D_LIBCPP_DISABLE_AVAILABILITY" \
+            -DCMAKE_EXE_LINKER_FLAGS="-L$LLVM_PREFIX/lib/c++ -Wl,-rpath,@executable_path/libs"
           cmake --build build
 
           mkdir -p dist dist/libs
@@ -92,7 +95,8 @@ jobs:
 
           dylibbundler -of -b -x dist/pvz-portable \
             -d dist/libs -p @executable_path/libs/ \
-            -s "$PWD/deps_install/lib"
+            -s "$PWD/deps_install/lib" \
+            -s "$LLVM_PREFIX/lib/c++"
           codesign --force --deep -s - dist/pvz-portable
           codesign --force --deep -s - dist/libs/*
 
@@ -101,4 +105,5 @@ jobs:
         with:
           name: pvz-portable-macos-intel-monterey
           path: dist/
+
 
