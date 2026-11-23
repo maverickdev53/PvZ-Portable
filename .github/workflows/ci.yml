@@ -37,6 +37,7 @@ jobs:
           cmake --build build-sdl3 && cmake --install build-sdl3
 
           git clone --depth 1 "$GH/libsdl-org/SDL_mixer.git"
+          (cd SDL_mixer && ./external/download.sh)
           cmake -G Ninja -S SDL_mixer -B build-mixer \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
